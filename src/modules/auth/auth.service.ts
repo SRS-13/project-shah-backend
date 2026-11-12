@@ -8,6 +8,11 @@ import { RegisterDto } from './dto/register.dto.js';
 import { ConfigService } from '@nestjs/config';
 import type { SignOptions } from 'jsonwebtoken';
 import { LoginDto } from './dto/login.dto.js';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { createHash } from 'node:crypto';
+
+import { RefreshSession } from './entities/refresh-session.entity.js';
 
 @Injectable()
 export class AuthService {
@@ -15,6 +20,9 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+
+    @InjectRepository(RefreshSession)
+    private readonly sessionRepository: Repository<RefreshSession>,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -109,5 +117,40 @@ export class AuthService {
     } catch {
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
+  }
+
+  private hashRefreshToken(token: string): string {
+    return createHash('sha256').update(token).digest('hex');
+  }
+  async logout(refreshToken: string) {
+    // Verify refresh token signature and expiration
+    const payload = await this.jwtService
+      .verifyAsync<{ sub: string }>(refreshToken, {
+        secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
+        issuer: 'teamflow-api',
+        audience: 'teamflow-refresh',
+      })
+      .catch(() => null);
+
+    // Idempotent logout: don't disclose token validity
+    if (!payload?.sub) {
+      return { message: 'Logged out successfully' };
+    }
+
+    const tokenHash = this.hashRefreshToken(refreshToken);
+
+    // Revoke only the matching active session
+    await this.sessionRepository
+      .createQueryBuilder()
+      .update(RefreshSession)
+      .set({ revokedAt: new Date() })
+      .where('user_id = :userId', { userId: payload.sub })
+      .andWhere('token_hash = :tokenHash', { tokenHash })
+      .andWhere('revoked_at IS NULL')
+      .execute();
+
+    return {
+      message: 'Logged out successfully',
+    };
   }
 }

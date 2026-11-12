@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { DataSource } from 'typeorm';
 import { User } from '../modules/users/entities/user.entity.js';
+import { RefreshSession } from '../modules/auth/entities/refresh-session.entity.js';
 
 const AppDataSource = new DataSource({
   type: 'postgres',
@@ -10,7 +11,7 @@ const AppDataSource = new DataSource({
   password: process.env.DB_PASSWORD,
   database: process.env.DB_DATABASE ?? 'teamflow_db',
 
-  entities: [User],
+  entities: [User, RefreshSession],
   migrations: ['src/database/migrations/*.ts'],
 
   synchronize: false,

@@ -8,6 +8,7 @@ import { LoginDto } from './dto/login.dto.js';
 import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 
 import { RefreshTokenDto } from './dto/refresh-token.dto.js';
+import { LogoutDto } from './dto/logout.dto.js';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -30,5 +31,13 @@ export class AuthController {
   @ApiOperation({ summary: 'Login and generate JWT' })
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
+  }
+
+  @Post('logout')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Logout and invalidate refresh token' })
+  logout(@Body() dto: LogoutDto) {
+    return this.authService.logout(dto.refreshToken);
   }
 }
