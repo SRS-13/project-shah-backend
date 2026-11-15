@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 
 import { AuthService } from './auth.service.js';
@@ -9,6 +9,13 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 
 import { RefreshTokenDto } from './dto/refresh-token.dto.js';
 import { LogoutDto } from './dto/logout.dto.js';
+
+interface JwtPayload {
+  sub: string;
+  email: string;
+  iat?: number;
+  exp?: number;
+}
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -31,6 +38,26 @@ export class AuthController {
   @ApiOperation({ summary: 'Login and generate JWT' })
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
+  }
+
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get current authenticated user profile' })
+  @ApiResponse({
+    status: 200,
+    description: 'Current user profile retrieved successfully',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Missing, invalid or expired access token',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'User not found',
+  })
+  async getProfile(@Req() req: Request & { user: JwtPayload }) {
+    return this.authService.getProfile(req.user.sub);
   }
 
   @Post('logout')

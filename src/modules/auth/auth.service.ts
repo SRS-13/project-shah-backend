@@ -1,4 +1,9 @@
-import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 
@@ -9,7 +14,7 @@ import { ConfigService } from '@nestjs/config';
 import type { SignOptions } from 'jsonwebtoken';
 import { LoginDto } from './dto/login.dto.js';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { IsNull, MoreThan, Repository } from 'typeorm';
 import { createHash } from 'node:crypto';
 
 import { RefreshSession } from './entities/refresh-session.entity.js';
@@ -100,23 +105,66 @@ export class AuthService {
   }
 
   async refresh(refreshToken: string) {
+    let payload: { sub: string; email: string };
+
     try {
-      const payload = await this.jwtService.verifyAsync<{
-        sub: string;
-        email: string;
-      }>(refreshToken, {
+      payload = await this.jwtService.verifyAsync(refreshToken, {
         secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
         issuer: 'teamflow-api',
         audience: 'teamflow-refresh',
       });
-
-      return this.generateTokens({
-        id: payload.sub,
-        email: payload.email,
-      });
     } catch {
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
+
+    const tokenHash = this.hashRefreshToken(refreshToken);
+
+    const session = await this.sessionRepository.findOne({
+      where: {
+        userId: payload.sub,
+        tokenHash,
+        revokedAt: IsNull(),
+        expiresAt: MoreThan(new Date()),
+      },
+    });
+
+    if (!session) {
+      throw new UnauthorizedException('Refresh session expired or revoked');
+    }
+
+    // Atomically claim the old session.
+    const result = await this.sessionRepository.update(
+      {
+        id: session.id,
+        revokedAt: IsNull(),
+      },
+      {
+        revokedAt: new Date(),
+      },
+    );
+
+    if (result.affected !== 1) {
+      throw new UnauthorizedException('Refresh token already used');
+    }
+
+    const user = await this.usersService.findById(payload.sub);
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    const tokens = await this.generateTokens(user);
+
+    await this.sessionRepository.save(
+      this.sessionRepository.create({
+        userId: user.id,
+        tokenHash: this.hashRefreshToken(tokens.refreshToken),
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        revokedAt: null,
+      }),
+    );
+
+    return tokens;
   }
 
   private hashRefreshToken(token: string): string {
@@ -151,6 +199,22 @@ export class AuthService {
 
     return {
       message: 'Logged out successfully',
+    };
+  }
+
+  async getProfile(userId: string) {
+    const user = await this.usersService.findById(userId);
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    return {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
     };
   }
 }

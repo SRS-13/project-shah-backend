@@ -8,17 +8,11 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import type { Request } from 'express';
 
-interface AccessTokenPayload {
+ interface JwtPayload {
   sub: string;
   email: string;
   iat?: number;
   exp?: number;
-  iss?: string;
-  aud?: string;
-}
-
-interface AuthenticatedRequest extends Request {
-  user?: AccessTokenPayload;
 }
 
 @Injectable()
@@ -28,12 +22,10 @@ export class JwtAuthGuard implements CanActivate {
     private readonly configService: ConfigService,
   ) {}
 
-  async canActivate(
-    context: ExecutionContext,
-  ): Promise<boolean> {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context
       .switchToHttp()
-      .getRequest<AuthenticatedRequest>();
+      .getRequest<Request & { user?: JwtPayload }>();
 
     const [type, token] =
       request.headers.authorization?.split(' ') ?? [];
@@ -45,7 +37,7 @@ export class JwtAuthGuard implements CanActivate {
     }
 
     try {
-      const payload = await this.jwtService.verifyAsync<AccessTokenPayload>(
+      const payload = await this.jwtService.verifyAsync<JwtPayload>(
         token,
         {
           secret: this.configService.getOrThrow<string>(
@@ -55,6 +47,13 @@ export class JwtAuthGuard implements CanActivate {
           audience: 'teamflow-client',
         },
       );
+
+      if (
+        typeof payload.sub !== 'string' ||
+        !payload.sub
+      ) {
+        throw new UnauthorizedException('Invalid token payload');
+      }
 
       request.user = payload;
       return true;

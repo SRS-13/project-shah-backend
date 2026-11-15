@@ -10,6 +10,10 @@ export class UsersService {
     private readonly userRepository: Repository<User>,
   ) {}
 
+  async findById(id: string): Promise<User | null> {
+    return this.userRepository.findOne({ where: { id } });
+  }
+
   async findByEmail(email: string): Promise<User | null> {
     return this.userRepository
       .createQueryBuilder('user')
