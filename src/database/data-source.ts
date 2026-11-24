@@ -2,6 +2,9 @@ import 'dotenv/config';
 import { DataSource } from 'typeorm';
 import { User } from '../modules/users/entities/user.entity.js';
 import { RefreshSession } from '../modules/auth/entities/refresh-session.entity.js';
+import { Organization } from '../modules/organizations/entities/organization.entity.js';
+import { OrganizationMember } from '../modules/organizations/entities/organization-member.entity.js';
+import { OrganizationInvitation } from '../modules/organizations/entities/organization-invitation.entity.js';
 
 const AppDataSource = new DataSource({
   type: 'postgres',
@@ -11,10 +14,14 @@ const AppDataSource = new DataSource({
   password: process.env.DB_PASSWORD,
   database: process.env.DB_DATABASE ?? 'teamflow_db',
 
-  entities: [User, RefreshSession],
+  entities: [User, RefreshSession, Organization, OrganizationMember, OrganizationInvitation],
   migrations: ['src/database/migrations/*.ts'],
 
   synchronize: false,
 });
 
+
+
 export default AppDataSource;
+
+

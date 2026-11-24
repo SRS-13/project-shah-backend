@@ -94,6 +94,15 @@ export class AuthService {
 
     const tokens = await this.generateTokens(user);
 
+    await this.sessionRepository.save(
+      this.sessionRepository.create({
+        userId: user.id,
+        tokenHash: this.hashRefreshToken(tokens.refreshToken),
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        revokedAt: null,
+      }),
+    );
+
     return {
       ...tokens,
       user: {

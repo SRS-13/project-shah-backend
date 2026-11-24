@@ -8,6 +8,8 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { RequestLoggerMiddleware } from './common/request-logger.middleware.js';
+import { OrganizationsModule } from './modules/organizations/organizations.module.js';
+import { ProjectsModule } from './modules/projects/projects.module.js';
 
 @Module({
   imports: [
@@ -37,6 +39,8 @@ import { RequestLoggerMiddleware } from './common/request-logger.middleware.js';
     }),
     AuthModule,
     UsersModule,
+    OrganizationsModule,
+    ProjectsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
