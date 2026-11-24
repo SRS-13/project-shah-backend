@@ -26,6 +26,8 @@ import { OrganizationRolesGuard } from './guards/organization-roles.guard.js';
 import { OrganizationRole } from './entities/organization-member.entity.js';
 import { TransferOwnershipDto } from './dto/transfer-ownership.dto.js';
 import { OrganizationRoles } from './decorators/organization-roles.decorator.js';
+import { ProjectPermission } from '../projects/enums/project-permission.enum.js';
+import { ProjectPermissions } from '../projects/decorators/project-permissions.decorator.js';
 
 interface JwtPayload {
   sub: string;
@@ -58,6 +60,7 @@ export class OrganizationsController {
   }
 
   @Get(':id/members')
+  @ProjectPermissions(ProjectPermission.VIEW_MEMBERS)
   @OrganizationRoles(OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.MEMBER)
   @ApiOperation({ summary: 'Get organization members' })
   findMembers(@Param('id', ParseUUIDPipe) id: string, @Req() req: AuthenticatedRequest) {
@@ -91,6 +94,8 @@ export class OrganizationsController {
   }
 
   @Post(':id/members')
+    @ProjectPermissions(ProjectPermission.MANAGE_MEMBERS)
+
   @ApiOperation({ summary: 'Add existing user to organization' })
   @OrganizationRoles(OrganizationRole.OWNER, OrganizationRole.ADMIN)
   addMember(
@@ -102,6 +107,8 @@ export class OrganizationsController {
   }
 
   @Patch(':id/members/:memberId')
+    @ProjectPermissions(ProjectPermission.MANAGE_MEMBERS)
+
   @OrganizationRoles(OrganizationRole.OWNER)
   @ApiOperation({ summary: 'Change organization member role' })
   updateMemberRole(
@@ -114,6 +121,7 @@ export class OrganizationsController {
   }
 
   @Delete(':id/members/:memberId')
+  @ProjectPermissions(ProjectPermission.MANAGE_MEMBERS)
   @OrganizationRoles(OrganizationRole.OWNER, OrganizationRole.ADMIN)
   @ApiOperation({ summary: 'Remove organization member' })
   removeMember(
@@ -175,23 +183,16 @@ export class OrganizationsController {
   }
 
   @Post(':id/invitations/:invitationId/regenerate')
-@HttpCode(HttpStatus.OK)
-@OrganizationRoles(
-  OrganizationRole.OWNER,
-  OrganizationRole.ADMIN,
-)
-@ApiOperation({
-  summary: 'Regenerate organization invitation link',
-})
-regenerateInvitation(
-  @Param('id', ParseUUIDPipe) id: string,
-  @Param('invitationId', ParseUUIDPipe) invitationId: string,
-  @Req() req: AuthenticatedRequest,
-) {
-  return this.organizationsService.regenerateInvitation(
-    id,
-    invitationId,
-    req.user.sub,
-  );
-}
+  @HttpCode(HttpStatus.OK)
+  @OrganizationRoles(OrganizationRole.OWNER, OrganizationRole.ADMIN)
+  @ApiOperation({
+    summary: 'Regenerate organization invitation link',
+  })
+  regenerateInvitation(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('invitationId', ParseUUIDPipe) invitationId: string,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.organizationsService.regenerateInvitation(id, invitationId, req.user.sub);
+  }
 }

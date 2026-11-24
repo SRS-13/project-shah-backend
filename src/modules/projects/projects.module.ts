@@ -13,23 +13,37 @@ import { Organization } from '../organizations/entities/organization.entity.js';
 import { OrganizationMember } from '../organizations/entities/organization-member.entity.js';
 
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
+import { ProjectMembersService } from './project-members.service.js';
+import { ProjectMembersController } from './project-members.controller.js';
+import { ProjectAccessService } from './services/project-access.service.js';
+
+import { ProjectAccessGuard } from './guards/project-access.guard.js';
+
+import { ProjectPermissionsGuard } from './guards/project-permissions.guard.js';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([
-      Project,
-      ProjectMember,
-      Organization,
-      OrganizationMember,
-    ]),
+    TypeOrmModule.forFeature([Project, ProjectMember, Organization, OrganizationMember]),
     JwtModule.register({}),
     ConfigModule,
   ],
-  controllers: [ProjectsController],
+  controllers: [ProjectsController, ProjectMembersController],
   providers: [
     ProjectsService,
+    ProjectMembersService,
+    ProjectAccessService,
+
+    JwtAuthGuard,
+    ProjectAccessGuard,
+    ProjectPermissionsGuard,
+  ],
+  exports: [
+    ProjectsService,
+    ProjectMembersService,
+    ProjectAccessService,
+    ProjectAccessGuard,
+    ProjectPermissionsGuard,
     JwtAuthGuard,
   ],
-  exports: [ProjectsService],
 })
 export class ProjectsModule {}
