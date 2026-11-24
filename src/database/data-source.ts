@@ -5,6 +5,8 @@ import { RefreshSession } from '../modules/auth/entities/refresh-session.entity.
 import { Organization } from '../modules/organizations/entities/organization.entity.js';
 import { OrganizationMember } from '../modules/organizations/entities/organization-member.entity.js';
 import { OrganizationInvitation } from '../modules/organizations/entities/organization-invitation.entity.js';
+import { Project } from '../modules/projects/entities/project.entity.js';
+import { ProjectMember } from '../modules/projects/entities/project-member.entity.js';
 
 const AppDataSource = new DataSource({
   type: 'postgres',
@@ -14,7 +16,15 @@ const AppDataSource = new DataSource({
   password: process.env.DB_PASSWORD,
   database: process.env.DB_DATABASE ?? 'teamflow_db',
 
-  entities: [User, RefreshSession, Organization, OrganizationMember, OrganizationInvitation],
+entities: [
+  User,
+  RefreshSession,
+  Organization,
+  OrganizationMember,
+  OrganizationInvitation,
+  Project,
+  ProjectMember,
+],
   migrations: ['src/database/migrations/*.ts'],
 
   synchronize: false,
